@@ -1,0 +1,116 @@
+#!/usr/bin/env zimbush
+
+ARG.Usage usage = NEW("Usage: %0% vimball.vmb [extdir]")
+
+list<string> vmbheader = [
+    "\" Vimball Archiver by Charles E. Campbell",
+    "UseVimball",
+    "finish",
+    ]
+
+FUNC Main() int
+  string vmbfile = ARG.get(0)
+  IF vmbfile == NIL
+    IO.print(usage.get())
+    RETURN 0
+  }
+  string extdir = ARG.get(1)
+  IF extdir == NIL
+    extdir = IO.getdir()
+  }
+  unvmb(vmbfile, extdir)
+  RETURN 0
+}
+
+PROC unvmb(string vmbfile, string extdir)
+  IO.File f = IO.fileReader(vmbfile)
+  read_file_header(f)
+  WHILE TRUE
+    tuple<string, list<string>> entry = read_entry(f)
+    IF entry == NIL
+      BREAK
+    }
+    write_entry(IO.concatPath(extdir, entry[0]), entry[1])
+  }
+  f.close()
+}
+
+PROC read_file_header(IO.File f)
+  FOR line IN vmbheader
+    IF f.readLine() != line
+      THROW E.Error.NEW("Error: No vmb header")
+    }
+  }
+}
+
+FUNC read_entry(IO.File f) tuple<string, list<string>>
+  tuple<string, int> header = read_entry_header(f)
+  IF header == NIL
+    RETURN NIL
+  }
+  RETURN NEW(header[0], f.readAllLines(header[1]))
+}
+
+FUNC read_entry_header(IO.File f) tuple<string, int>
+  string line = f.readLine()
+  IF line == NIL
+    RETURN NIL
+  }
+  list<string> t = line.split("\t")
+  IF t[1] != "[[[1"
+    THROW E.Error.NEW("Error: No entry header")
+  }
+  string size = f.readLine()
+  RETURN NEW(t[0], size.toInt())
+}
+
+PROC write_entry(string path, list<string> contents)
+  IF !IO.isDirectory(dirname(path))
+    IF !mkdirp(dirname(path))
+      THROW E.Error.NEW("Error: cannot create directory: " .. dirname(path))
+    }
+  }
+  IO.File f = IO.fileWriter(path)
+  f.writeAllLines(contents)
+  f.close()
+}
+
+FUNC dirname(string path) string
+  int s = IO.pastHeadIndex(path)
+  int i = path.size() - 1
+  WHILE i >= s && IO.isPathSep(path[i])
+    --i
+  }
+  WHILE i >= s && !IO.isPathSep(path[i])
+    --i
+  }
+  WHILE i >= s && IO.isPathSep(path[i])
+    --i
+  }
+  IF i < s
+    IF s == 0
+      RETURN ""
+    ELSE
+      RETURN path.slice(0, s - 1)
+    }
+  }
+  RETURN path.slice(0, i)
+}
+
+FUNC mkdirp(string path) bool
+  IF path == ""
+    RETURN TRUE
+  }
+  IF !IO.isDirectory(dirname(path))
+    IF !mkdirp(dirname(path))
+      RETURN FALSE
+    }
+  }
+  IF !IO.isDirectory(path)
+    IF IO.mkdir(path) != OK
+      RETURN FALSE
+    }
+  }
+  RETURN TRUE
+}
+
