@@ -2,12 +2,6 @@
 
 ARG.Usage usage = NEW("Usage: %0% vimball.vmb [extdir]")
 
-list<string> vmbheader = [
-    "\" Vimball Archiver by Charles E. Campbell",
-    "UseVimball",
-    "finish",
-    ]
-
 FUNC Main() int
   string vmbfile = ARG.get(0)
   IF vmbfile == NIL
@@ -36,10 +30,8 @@ PROC unvmb(string vmbfile, string extdir)
 }
 
 PROC read_file_header(IO.File f)
-  FOR line IN vmbheader
-    IF f.readLine() != line
+  IF !f.readLine().startsWith("\"") || f.readLine() != "UseVimball" || f.readLine() != "finish"
       THROW E.Error.NEW("Error: No vmb header")
-    }
   }
 }
 
